@@ -44,7 +44,7 @@ def main():
 
 
     # Load in Lissajous sequence A-line
-    os.chdir(r"/root/compressed_sensing")
+    os.chdir(r"/home/xwu25/Compressed sensing")
     print(os.getcwd())
 
 
@@ -53,8 +53,8 @@ def main():
 
     row, column = B_scan_sequence_2D.shape
     for each_row in range(row):
-        #if not each_row == 613:
-        #    continue
+        if not each_row == 613:
+            continue
         B_Scan_sequence_1D = B_scan_sequence_2D[each_row]
 
         # Reconstuct sampled image by filing B_Scan pixel into grid
@@ -64,13 +64,13 @@ def main():
         for i,each_pixel in enumerate(grid):
             sample_image[-each_pixel[1], each_pixel[0]] = B_Scan_sequence_1D[i]
 
-        test = False
+        test = False 
         # compressed sensing using a Nikon microscopy target image
         if test:
             np.random.seed(1)
             original_image = cv2.imread('Target_10_Nikon_flawless.png', cv2.IMREAD_GRAYSCALE)
             image_ny, image_nx = original_image.shape
-            sample_ratio = 0.2
+            sample_ratio = 0.6
             k = round(image_nx*image_ny*sample_ratio)
             ri = np.random.choice(image_nx*image_ny, k, replace = False)
             y = original_image.flatten("F")[ri]
@@ -82,7 +82,7 @@ def main():
             print("OriginalImage Dimension:{}".format(original_image.shape))
             cv2.imwrite('Sampled_image_{}.png'.format(sample_ratio), sample_image)
 
-            folder_name = r'/root/compressed_sensing/Target_Nikon_flawless_test'
+            folder_name = r'/home/xwu25/Compressed sensing/Target_Nikon_flawless_test'
             if not os.path.exists(folder_name):
                 os.mkdir(folder_name)
             os.chdir(folder_name)
@@ -94,16 +94,17 @@ def main():
             y = sample_image_flatten[ri]                        # b -> 1d array
             y = np.expand_dims(y, axis = 1)                     # b -> column vector
             #print("Observer Vector Y shape: {}".format(y.shape))
-            folder_name = r'/root/compressed_sensing/3D_slices'
+            folder_name = r'/home/xwu25/Compressed sensing/DWT'
             if not os.path.exists(folder_name):
                 os.mkdir(folder_name)
             os.chdir(folder_name)
-    
+
+        
         # prepare wavelet transform (DWT) parameters
         global slices
         global wavelet_type
         wavelet_type = 'haar'
-        dec_level = 3
+        dec_level = 2
         
         coeff_a = pywt.wavedec2(sample_image, wavelet = wavelet_type, level = dec_level)
         coeff_array, slices = pywt.coeffs_to_array(coeff_a)
@@ -212,19 +213,19 @@ def main():
         if Trans_Algo == 'DCT':
             # comment following lines when using DWT
             # perform the L1 minimization in memory
-            step_size = 5
-            Xat2 = owlqn(image_nx * image_ny, evaluate_dct, None, step_size)
+            param_lambda = 40
+            Xat2 = owlqn(image_nx * image_ny, evaluate_dct, None, param_lambda)
             Xat = Xat2.reshape(image_nx, image_ny).T
             Xa  = idct2(Xat)
             
             # reconstruction
             image_reconstructed = Xa.astype('uint8')
-            plt.imsave('CS_reconstruct_{}_{}X{}_step{}_DCT_Sample_{}.png'.format(each_row,image_ny,image_nx, step_size, sample_ratio),image_reconstructed,cmap = 'gray')
+            plt.imsave('CS_reconstruct_{}_{}X{}_lambda{}_DCT_Sample_{}.png'.format(each_row,image_ny,image_nx, param_lambda, np.around(sample_ratio, decimals = 2)),np.flip(image_reconstructed, 0),cmap = 'gray')
         
         if Trans_Algo == 'DWT':
             # perform the L1 minimization in memory
-            step_size = 20
-            Xat2_coeff = owlqn(coeff_arr_nx*coeff_arr_ny, evaluate_dwt, None, step_size)
+            param_lambda = 40
+            Xat2_coeff = owlqn(coeff_arr_nx*coeff_arr_ny, evaluate_dwt, None, param_lambda)
             Xat_coeff = Xat2_coeff.reshape(coeff_arr_nx, coeff_arr_ny).T
             #cv2.imwrite('Coefficient_Array_lambda_{}_wavelet_{}_declevel_{}_Sample_{}_decimal_3.png'.format(step_size, wavelet_type,dec_level, np.around(sample_ratio, decimals = 2)), Xat_coeff)
             Xa_coeff = pywt.array_to_coeffs(Xat_coeff, slices, output_format = 'wavedec2')
@@ -232,7 +233,7 @@ def main():
         
             # reconstruction
             image_reconstructed = Xa.astype('uint8')
-            plt.imsave('CS_reconstruct_{}_{}X{}_lambda_{}_wavelet_{}_declevel_{}_Sample_{}_decimal_3.png'.format(each_row,image_ny,image_nx, step_size, wavelet_type,dec_level, np.around(sample_ratio, decimals = 2)),np.flip(image_reconstructed,0),cmap = 'gray', vmin = 50, vmax = 200)
+            plt.imsave('CS_reconstruct_{}_{}X{}_lambda_{}_wavelet_{}_declevel_{}_Sample_{}_decimal_3.png'.format(each_row,image_ny,image_nx, param_lambda, wavelet_type,dec_level, np.around(sample_ratio, decimals = 2)),np.flip(image_reconstructed,0),cmap = 'gray', vmin = 50, vmax = 200)
 
             #cv2.imwrite('CS_reconstruct_613_{}X{}.png'.format(size,size), np.flip(image_reconstructed, 0))
 if __name__ == "__main__":
